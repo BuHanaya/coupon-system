@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام الكوبونات</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- شاشة تسجيل الدخول -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-mark">◈</div>
+      <h1>نظام الكوبونات</h1>
+      <p>لوحة إدارة كوبونات الشراء</p>
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="login-pass" placeholder="أدخل كلمة المرور" autocomplete="current-password">
+      <div class="login-error" id="login-error">كلمة المرور غير صحيحة</div>
+    </div>
+    <button class="btn-login" onclick="doLogin()">دخول</button>
+    <div class="login-hint">كلمة المرور الافتراضية: <code>admin123</code></div>
+  </div>
+</div>
+
+<!-- التطبيق الرئيسي -->
+<div id="app" class="app hidden">
+
+  <!-- الشريط الجانبي -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark-sm">◈</div>
+      <span>كوبونات</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="generate" onclick="switchTab(this,'generate')">
+        <span class="nav-icon">✦</span> توليد كوبون
+      </button>
+      <button class="nav-item" data-tab="manage" onclick="switchTab(this,'manage')">
+        <span class="nav-icon">≡</span> إدارة الكوبونات
+      </button>
+      <button class="nav-item" data-tab="verify" onclick="switchTab(this,'verify')">
+        <span class="nav-icon">◎</span> التحقق
+      </button>
+      <button class="nav-item" data-tab="stats" onclick="switchTab(this,'stats')">
+        <span class="nav-icon">◑</span> الإحصائيات
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="stat-pill" id="sb-total">0 كوبون</div>
+      <button class="logout-btn" onclick="doLogout()">خروج</button>
+    </div>
+  </aside>
+
+  <!-- المحتوى الرئيسي -->
+  <main class="main-content">
+
+    <!-- تبويب: توليد كوبون -->
+    <section class="tab-page active" id="tab-generate">
+      <div class="page-header">
+        <h2>توليد كوبون جديد</h2>
+        <p>أنشئ كوبون واحد أو دفعة كوبونات مرة واحدة</p>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">تفاصيل الكوبون</div>
+          <div class="form-group">
+            <label>اسم العميل <span class="opt">اختياري</span></label>
+            <input type="text" id="g-name" placeholder="مثال: محمد العلي">
+          </div>
+          <div class="form-group">
+            <label>قيمة الخصم</label>
+            <div class="input-row">
+              <input type="number" id="g-value" placeholder="50" min="1">
+              <select id="g-type">
+                <option value="percent">نسبة %</option>
+                <option value="fixed">مبلغ ريال</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>الحد الأدنى للشراء <span class="opt">اختياري</span></label>
+            <input type="number" id="g-min" placeholder="مثال: 200">
+          </div>
+          <div class="form-group">
+            <label>تاريخ الانتهاء <span class="opt">اختياري</span></label>
+            <input type="date" id="g-exp">
+          </div>
+          <div class="form-group">
+            <label>الكمية</label>
+            <div class="input-row">
+              <input type="number" id="g-qty" value="1" min="1" max="100" style="width:100px">
+              <span class="muted-text">كوبون — الحد الأقصى 100</span>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="generateCoupons()">توليد الكوبونات ✦</button>
+        </div>
+
+        <div class="card" id="gen-result-card" style="display:none">
+          <div class="card-title-row">
+            <div class="card-title">الكوبونات المولّدة</div>
+            <button class="btn-sm" onclick="copyAllGenerated()">نسخ الكل</button>
+          </div>
+          <div id="gen-alert"></div>
+          <div id="gen-list" class="gen-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- تبويب: إدارة -->
+    <section class="tab-page" id="tab-manage">
+      <div class="page-header">
+        <h2>إدارة الكوبونات</h2>
+        <p>عرض وتتبع جميع الكوبونات</p>
+      </div>
+      <div class="card">
+        <div class="filter-row">
+          <input type="text" id="search-input" placeholder="بحث بالكود أو الاسم أو الرقم التسلسلي..." class="search-input" oninput="renderTable()">
+          <select id="filter-status" onchange="renderTable()">
+            <option value="all">كل الحالات</option>
+            <option value="active">فعّال</option>
+            <option value="used">مستخدم</option>
+            <option value="expired">منتهي</option>
+          </select>
+          <button class="btn-danger" onclick="clearAll()">حذف الكل</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الكود</th>
+                <th>رقم التسلسل</th>
+                <th>العميل</th>
+                <th>الخصم</th>
+                <th>الحالة</th>
+                <th>تاريخ الاستخدام</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody id="coupons-table"></tbody>
+          </table>
+        </div>
+        <div id="empty-msg" class="empty-msg" style="display:none">لا توجد كوبونات بعد</div>
+      </div>
+    </section>
+
+    <!-- تبويب: التحقق -->
+    <section class="tab-page" id="tab-verify">
+      <div class="page-header">
+        <h2>التحقق من كوبون</h2>
+        <p>تحقق من صلاحية الكوبون وسجّل استخدامه</p>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">فحص الكوبون</div>
+          <div class="form-group">
+            <label>الكود أو الرقم التسلسلي</label>
+            <input type="text" id="v-code" placeholder="مثال: VIP-00001 أو 1" class="mono-input" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')verifyCoupon()">
+          </div>
+          <button class="btn-primary" onclick="verifyCoupon()">تحقق الآن ◎</button>
+          <div id="v-result" class="verify-result" style="display:none"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">إضافة كوبون يدوي</div>
+          <div class="form-group">
+            <label>كود الكوبون</label>
+            <input type="text" id="m-code" placeholder="مثال: MANUAL-001" class="mono-input" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="form-group">
+            <label>اسم العميل <span class="opt">اختياري</span></label>
+            <input type="text" id="m-name" placeholder="اسم العميل">
+          </div>
+          <div class="form-group">
+            <label>قيمة الخصم</label>
+            <div class="input-row">
+              <input type="number" id="m-value" placeholder="50">
+              <select id="m-type"><option value="percent">%</option><option value="fixed">ريال</option></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>تاريخ الانتهاء <span class="opt">اختياري</span></label>
+            <input type="date" id="m-exp">
+          </div>
+          <button class="btn-secondary" onclick="addManual()">إضافة كوبون</button>
+          <div id="m-alert"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- تبويب: الإحصائيات -->
+    <section class="tab-page" id="tab-stats">
+      <div class="page-header">
+        <h2>الإحصائيات</h2>
+        <p>نظرة عامة على أداء الكوبونات</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card stat-total">
+          <div class="stat-val" id="s-total">0</div>
+          <div class="stat-label">إجمالي الكوبونات</div>
+        </div>
+        <div class="stat-card stat-active">
+          <div class="stat-val" id="s-active">0</div>
+          <div class="stat-label">فعّال</div>
+        </div>
+        <div class="stat-card stat-used">
+          <div class="stat-val" id="s-used">0</div>
+          <div class="stat-label">مستخدم</div>
+        </div>
+        <div class="stat-card stat-expired">
+          <div class="stat-val" id="s-expired">0</div>
+          <div class="stat-label">منتهي</div>
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:1.5rem">
+        <div class="card">
+          <div class="card-title">آخر الكوبونات المستخدمة</div>
+          <div id="s-used-list" class="simple-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">توزيع الخصومات</div>
+          <div id="s-discount-list" class="simple-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
